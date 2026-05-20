@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { Upload, Loader2, Cloud, ArrowUpFromLine, File } from "lucide-react";
+import { Upload, Loader2, Cloud, ArrowUpFromLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DropZoneProps {
@@ -97,10 +97,10 @@ export function DropZone({ onUpload, disabled, compact = false }: DropZoneProps)
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "flex items-center gap-3 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200",
+          "flex items-center gap-3 px-4 py-3 border border-dashed rounded-xl cursor-pointer transition-all duration-200",
           isDragging
-            ? "border-primary bg-primary/5 scale-[1.01]"
-            : "border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/30",
+            ? "border-primary bg-primary/5"
+            : "border-muted-foreground/25 hover:border-primary/40 hover:bg-muted/40",
           (disabled || isUploading) && "opacity-50 cursor-not-allowed",
         )}
       >
@@ -132,7 +132,7 @@ export function DropZone({ onUpload, disabled, compact = false }: DropZoneProps)
             isDragging ? "text-primary" : "text-foreground"
           )}>
             {isUploading
-              ? `Uploading ${uploadProgress?.count || 0} file(s)...`
+              ? `Uploading ${uploadProgress?.count || 0} file(s)`
               : isDragging
                 ? "Drop files here"
                 : "Drop files or click to upload"}
@@ -155,19 +155,13 @@ export function DropZone({ onUpload, disabled, compact = false }: DropZoneProps)
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "relative border-2 border-dashed rounded-2xl p-6 sm:p-8 text-center cursor-pointer transition-all duration-300 overflow-hidden group",
+        "relative border border-dashed rounded-xl p-5 sm:p-6 text-center cursor-pointer transition-all duration-300 overflow-hidden group",
         isDragging
-          ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 scale-[1.02] shadow-lg shadow-primary/10"
-          : "border-muted-foreground/20 hover:border-primary/40 hover:bg-gradient-to-br hover:from-muted/80 hover:to-muted/40",
+          ? "border-primary bg-primary/5"
+          : "border-muted-foreground/25 hover:border-primary/40 hover:bg-muted/40",
         (disabled || isUploading) && "opacity-50 cursor-not-allowed",
       )}
     >
-      {/* Background decoration */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none">
-        <div className="absolute -right-8 -top-8 size-32 rounded-full bg-primary blur-3xl" />
-        <div className="absolute -left-8 -bottom-8 size-24 rounded-full bg-primary blur-3xl" />
-      </div>
-
       <input
         ref={fileInputRef}
         type="file"
@@ -180,15 +174,14 @@ export function DropZone({ onUpload, disabled, compact = false }: DropZoneProps)
       <div className="relative flex flex-col items-center gap-3 sm:gap-4">
         {isUploading ? (
           <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-            <div className="size-14 sm:size-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-              <Loader2 className="size-6 sm:size-8 text-primary-foreground animate-spin" />
+            <div className="size-14 sm:size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Loader2 className="size-6 sm:size-8 text-primary animate-spin" />
             </div>
           </div>
         ) : isDragging ? (
-          <div className="relative animate-bounce">
-            <div className="size-14 sm:size-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-              <ArrowUpFromLine className="size-6 sm:size-8 text-primary-foreground" />
+          <div className="relative">
+            <div className="size-14 sm:size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <ArrowUpFromLine className="size-6 sm:size-8 text-primary" />
             </div>
           </div>
         ) : (
@@ -204,9 +197,9 @@ export function DropZone({ onUpload, disabled, compact = false }: DropZoneProps)
             isDragging ? "text-primary" : "text-foreground"
           )}>
             {isUploading
-              ? `Uploading ${uploadProgress?.count || 0} file(s)...`
+              ? `Uploading ${uploadProgress?.count || 0} file(s)`
               : isDragging
-                ? "Drop to upload!"
+                ? "Drop to upload"
                 : "Drag & drop files here"}
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground">

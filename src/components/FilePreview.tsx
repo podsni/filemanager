@@ -173,11 +173,11 @@ export function FilePreview({ file, onClose, onDownload }: FilePreviewProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 animate-in fade-in-0 duration-150"
       onClick={onClose}
     >
       <div
-        className="bg-card border rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] flex flex-col m-4 overflow-hidden animate-in zoom-in-95 duration-200"
+        className="surface-panel rounded-2xl shadow-xl w-full max-w-5xl max-h-[95vh] flex flex-col m-4 overflow-hidden animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -213,7 +213,7 @@ export function FilePreview({ file, onClose, onDownload }: FilePreviewProps) {
         <div className="flex-1 overflow-auto bg-black/5 dark:bg-black/20">
           {loading ? (
             <div className="flex items-center justify-center h-96">
-              <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
+              <div className="h-10 w-10 rounded-xl bg-muted skeleton-shimmer" />
             </div>
           ) : isImage && content ? (
             <div className="flex items-center justify-center p-4 min-h-96">
@@ -275,7 +275,7 @@ export function FilePreview({ file, onClose, onDownload }: FilePreviewProps) {
           ) : isAudio && content ? (
             <div className="p-8 space-y-6">
               <div className="flex flex-col items-center gap-4">
-                <div className="size-32 rounded-full bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center shadow-xl animate-pulse">
+                <div className="size-32 rounded-3xl bg-primary/10 flex items-center justify-center">
                   <FileIcon type="audio" className="size-16" />
                 </div>
                 <p className="font-medium text-lg text-center max-w-md truncate">{file.name}</p>

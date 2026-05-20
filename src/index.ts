@@ -1,12 +1,35 @@
 import { serve } from "bun";
 import index from "./index.html";
 import { listFiles, saveFile, getFile, deleteFile, createFolder, moveFile } from "./utils/files";
-import { loadConfig, saveConfig } from "./lib/config";
+import { loadConfig, saveConfig, getCurrentUser } from "./lib/config";
+import { statfs } from "node:fs/promises";
+import { networkInterfaces, homedir } from "node:os";
 
 const server = serve({
   port: 1945,
+  hostname: "0.0.0.0",
   routes: {
     "/*": index,
+
+    "/api/system": {
+      async GET() {
+        const config = await loadConfig();
+        const user = getCurrentUser();
+        const activeLocation = config.locations[config.activeLocationIndex];
+        const path = activeLocation?.path ?? homedir();
+
+        let disk = { total: 0, used: 0, free: 0, percent: 0 };
+        try {
+          const fs = await statfs(path);
+          const total = fs.blocks * fs.bsize;
+          const free = fs.bfree * fs.bsize;
+          const used = total - free;
+          disk = { total, used, free, percent: total > 0 ? Math.round((used / total) * 100) : 0 };
+        } catch {}
+
+        return Response.json({ user, disk });
+      }
+    },
 
     "/api/config": {
       async GET() {
@@ -120,4 +143,26 @@ const server = serve({
   },
 });
 
-console.log(`🚀 File Magnet running at ${server.url}`);
+console.log(`🚀 File Magnet running on port ${server.port}`);
+
+// Print all accessible URLs
+const nets = networkInterfaces();
+const addresses: string[] = ["http://localhost:" + server.port];
+for (const iface of Object.values(nets)) {
+  for (const addr of iface ?? []) {
+    if (addr.family === "IPv4" && !addr.internal) {
+      addresses.push(`http://${addr.address}:${server.port}`);
+    }
+  }
+}
+console.log("🌐 Accessible at:");
+for (const addr of addresses) console.log(`   ${addr}`);
+
+// Print startup info
+loadConfig().then(config => {
+  const user = getCurrentUser();
+  const activeLocation = config.locations[config.activeLocationIndex];
+  console.log(`👤 User: ${user}`);
+  console.log(`📁 Active location: ${activeLocation?.name ?? "none"} → ${activeLocation?.path ?? "not set"}`);
+  console.log(`🗂️  Total locations: ${config.locations.length}`);
+});

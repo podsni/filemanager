@@ -1,4 +1,4 @@
-import { Download, Trash2, Loader2, Folder, FolderOpen, Eye, GripVertical, Check, FolderInput } from "lucide-react";
+import { Download, Trash2, Folder, FolderOpen, Eye, GripVertical, Check, FolderInput } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileIcon } from "./FileIcon";
 import { cn } from "@/lib/utils";
@@ -61,14 +61,14 @@ export function FileList({
 }: FileListProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
-          <div className="size-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-            <Loader2 className="size-6 animate-spin text-primary-foreground" />
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground">Loading files...</p>
+      <div className="p-4 space-y-3">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-14 rounded-xl bg-muted/60 skeleton-shimmer"
+            style={{ animationDelay: `${index * 55}ms` }}
+          />
+        ))}
       </div>
     );
   }
@@ -148,9 +148,7 @@ function FileItem({
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Delete "${file.name}"?`)) {
-      await onDelete(file.path);
-    }
+    await onDelete(file.path);
   };
 
   const handleDownload = (e: React.MouseEvent) => {
@@ -221,14 +219,14 @@ function FileItem({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ animationDelay: `${index * 30}ms` }}
+      style={{ animationDelay: `${Math.min(index, 10) * 18}ms` }}
       className={cn(
-        "group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-1",
+        "file-row group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-1",
         isSelected
-          ? "bg-primary/10 border-primary/50 shadow-sm"
-          : "bg-card hover:bg-muted/50 border-transparent hover:border-border",
+          ? "bg-primary/10 border-primary/50"
+          : "bg-card/80 hover:bg-muted/50 border-transparent hover:border-border",
         file.isDirectory && "hover:bg-amber-500/5 hover:border-amber-500/30",
-        isDragOver && "bg-primary/20 border-primary scale-[1.02] shadow-lg",
+        isDragOver && "bg-primary/15 border-primary scale-[1.01]",
         isDragging && "opacity-50 scale-95"
       )}
     >
@@ -241,8 +239,8 @@ function FileItem({
         className={cn(
           "shrink-0 size-5 rounded-md border-2 flex items-center justify-center transition-all",
           isSelected
-            ? "bg-primary border-primary text-primary-foreground scale-105"
-            : "border-muted-foreground/30 hover:border-primary hover:scale-105"
+            ? "bg-primary border-primary text-primary-foreground"
+            : "border-muted-foreground/30 hover:border-primary"
         )}
       >
         {isSelected && <Check className="size-3" />}
@@ -250,7 +248,7 @@ function FileItem({
 
       {/* Icon */}
       <div className={cn(
-        "shrink-0 size-10 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105",
+        "shrink-0 size-10 rounded-lg flex items-center justify-center transition-transform group-hover:-translate-y-0.5",
         file.isDirectory ? "bg-amber-500/10" : "bg-muted"
       )}>
         {file.isDirectory ? (
@@ -305,7 +303,7 @@ function FileItem({
           size="icon-sm"
           onClick={(e) => { e.stopPropagation(); onMoveFile?.(file); }}
           title="Move to folder"
-          className="hover:bg-blue-500/10 hover:text-blue-500"
+          className="hover:bg-primary/10 hover:text-primary"
         >
           <FolderInput className="size-4" />
         </Button>

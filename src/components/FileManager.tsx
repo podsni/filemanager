@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
 import type { ViewMode } from "./Toolbar";
@@ -13,6 +13,8 @@ import { CreateFolderDialog } from "./CreateFolderDialog";
 import { MoveFileDialog } from "./MoveFileDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { ThemeToggle } from "./ThemeToggle";
+import { CommandPalette, type CommandPaletteAction, type CommandPaletteFile } from "./CommandPalette";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { useFiles } from "@/hooks/useFiles";
 import { cn } from "@/lib/utils";
 import { Menu, X, Settings, ArrowUpFromLine } from "lucide-react";
@@ -29,17 +31,17 @@ interface FileInfo {
 
 // Custom hook for responsive breakpoints
 function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(() =>
+    typeof window === "undefined" ? false : window.matchMedia(query).matches,
+  );
 
   useEffect(() => {
     const media = window.matchMedia(query);
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
-    const listener = () => setMatches(media.matches);
+    setMatches(media.matches);
+    const listener = (event: MediaQueryListEvent) => setMatches(event.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);
-  }, [matches, query]);
+  }, [query]);
 
   return matches;
 }
@@ -91,24 +93,40 @@ export function FileManager() {
   const [previewFile, setPreviewFile] = useState<FileInfo | null>(null);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [moveFileTarget, setMoveFileTarget] = useState<FileInfo | null>(null);
   const [draggedFile, setDraggedFile] = useState<FileInfo | null>(null);
   const [isWindowDragging, setIsWindowDragging] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<
+    | { type: "selected"; count: number }
+    | { type: "file"; path: string; name: string }
+    | null
+  >(null);
   const windowDragCounter = useRef(0);
+  const sidebarUserControlled = useRef(false);
+  const previewUserControlled = useRef(false);
 
   // Adjust UI based on screen size
   useEffect(() => {
-    if (isDesktop) {
-      setShowSidebar(true);
-      setShowPreview(true);
-    } else if (isTablet) {
-      setShowSidebar(true);
-      setShowPreview(false);
-    } else {
-      setShowSidebar(false);
-      setShowPreview(false);
+    if (!sidebarUserControlled.current) {
+      setShowSidebar(isDesktop || isTablet);
     }
-  }, [isDesktop, isTablet, isMobile]);
+    if (!previewUserControlled.current) {
+      setShowPreview(isDesktop);
+    }
+  }, [isDesktop, isTablet]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setShowCommandPalette(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Global drag handling
   useEffect(() => {
@@ -191,18 +209,169 @@ export function FileManager() {
     }
   };
 
+  const handleToggleSidebar = () => {
+    sidebarUserControlled.current = true;
+    setShowSidebar((value) => !value);
+  };
+
+  const handleCloseSidebar = () => {
+    sidebarUserControlled.current = true;
+    setShowSidebar(false);
+  };
+
+  const handleTogglePreview = () => {
+    previewUserControlled.current = true;
+    setShowPreview((value) => !value);
+  };
+
+  const handleClosePreview = () => {
+    previewUserControlled.current = true;
+    setShowPreview(false);
+  };
+
   const handleDeleteSelected = async () => {
-    if (selectedFiles.size > 0 && confirm(`Delete ${selectedFiles.size} items?`)) {
-      await deleteSelected();
-      setFocusedFile(null);
+    if (selectedFiles.size > 0) {
+      setPendingDelete({ type: "selected", count: selectedFiles.size });
     }
   };
 
   const handleDeleteFile = async (path: string) => {
-    await deleteFile(path);
-    if (focusedFile?.path === path) {
-      setFocusedFile(null);
+    const file = files.find((item) => item.path === path);
+    setPendingDelete({
+      type: "file",
+      path,
+      name: file?.name ?? path.split("/").pop() ?? path,
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    const request = pendingDelete;
+    setPendingDelete(null);
+
+    void (async () => {
+      if (!request) return;
+      if (request.type === "selected") {
+        await deleteSelected();
+        setFocusedFile(null);
+        return;
+      }
+
+      await deleteFile(request.path);
+      if (focusedFile?.path === request.path) {
+        setFocusedFile(null);
+      }
+      if (previewFile?.path === request.path) {
+        setPreviewFile(null);
+      }
+    })();
+  };
+
+  const commandActions = useMemo<CommandPaletteAction[]>(() => {
+    return [
+      {
+        id: "refresh",
+        label: "Refresh files",
+        description: "Reload the current folder",
+        keywords: ["reload", "sync"],
+        run: () => void refresh(),
+      },
+      {
+        id: "new-folder",
+        label: "New folder",
+        description: "Create a folder in the current location",
+        keywords: ["create", "directory"],
+        run: () => setShowCreateFolder(true),
+      },
+      {
+        id: "toggle-sidebar",
+        label: showSidebar ? "Hide sidebar" : "Show sidebar",
+        description: "Toggle the locations panel",
+        keywords: ["locations", "panel"],
+        run: handleToggleSidebar,
+      },
+      {
+        id: "toggle-preview",
+        label: showPreview ? "Hide preview" : "Show preview",
+        description: "Toggle the details panel",
+        keywords: ["info", "details", "panel"],
+        run: handleTogglePreview,
+      },
+      {
+        id: "toggle-hidden",
+        label: showHidden ? "Hide hidden files" : "Show hidden files",
+        description: "Toggle dotfiles in the file list",
+        keywords: ["dotfiles", "visibility"],
+        run: toggleShowHidden,
+      },
+      {
+        id: "view-icon",
+        label: "Icon view",
+        description: "Show files as a grid",
+        keywords: ["grid"],
+        run: () => setViewMode("icon"),
+      },
+      {
+        id: "view-list",
+        label: "List view",
+        description: "Show files as rows",
+        keywords: ["rows", "table"],
+        run: () => setViewMode("list"),
+      },
+      {
+        id: "view-column",
+        label: "Column view",
+        description: "Show files in columns",
+        keywords: ["finder"],
+        run: () => setViewMode("column"),
+      },
+      {
+        id: "clear-search",
+        label: "Clear search",
+        description: "Reset the current search query",
+        keywords: ["reset", "filter"],
+        run: () => setSearchQuery(""),
+      },
+    ];
+  }, [refresh, showHidden, showPreview, showSidebar, toggleShowHidden]);
+
+  const commandFiles = useMemo<CommandPaletteFile[]>(
+    () => filteredFiles.map((file) => ({
+      name: file.name,
+      type: file.type,
+      isDirectory: file.isDirectory,
+      path: file.path,
+    })),
+    [filteredFiles],
+  );
+
+  const handleCommandOpenFile = (file: CommandPaletteFile) => {
+    const target = files.find((item) => item.path === file.path);
+    if (!target || target.isDirectory) return;
+    setFocusedFile(target);
+    clearSelection();
+    toggleSelect(target.path);
+    setPreviewFile(target);
+  };
+
+  const handleCommandOpenFolder = (path: string) => {
+    navigateToFolder(path);
+    closeMobileOverlays();
+  };
+
+  const getDeleteDialogCopy = () => {
+    if (!pendingDelete) {
+      return { title: "", description: "" };
     }
+    if (pendingDelete.type === "selected") {
+      return {
+        title: `Delete ${pendingDelete.count} items?`,
+        description: "This will remove the selected files and folders from the current storage location.",
+      };
+    }
+    return {
+      title: `Delete "${pendingDelete.name}"?`,
+      description: "This item will be removed from the current storage location.",
+    };
   };
 
   const closeMobileOverlays = () => {
@@ -212,20 +381,16 @@ export function FileManager() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden relative">
-      {/* Decorative background elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      
+    <div className="h-[100dvh] w-screen flex flex-col bg-background overflow-hidden relative app-shell">
       {/* Global Drop Overlay */}
       {isWindowDragging && (
-        <div className="fixed inset-0 z-[100] bg-primary/10 backdrop-blur-md flex items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className="w-full max-w-2xl aspect-video border-4 border-dashed border-primary rounded-[3rem] bg-background/80 flex flex-col items-center justify-center gap-6 shadow-2xl animate-in zoom-in duration-500">
-            <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center animate-bounce">
+        <div className="fixed inset-0 z-[100] bg-background/85 flex items-center justify-center p-8 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl aspect-video border-2 border-dashed border-primary/70 rounded-3xl bg-card/95 flex flex-col items-center justify-center gap-6 shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="size-24 rounded-2xl bg-primary/10 flex items-center justify-center">
               <ArrowUpFromLine className="size-12 text-primary" />
             </div>
             <div className="text-center space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight text-gradient">Drop to Upload</h2>
+              <h2 className="text-3xl font-semibold tracking-tight">Drop to Upload</h2>
               <p className="text-muted-foreground font-medium">Your files will be uploaded to the current folder</p>
             </div>
           </div>
@@ -234,16 +399,16 @@ export function FileManager() {
 
       {/* Mobile Header */}
       {isMobile && (
-        <div className="flex items-center justify-between px-4 py-3 border-b glass z-30">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-card/95 z-30">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowSidebar(!showSidebar)}
+            onClick={handleToggleSidebar}
             className="hover:bg-primary/10"
           >
             <Menu className="size-5" />
           </Button>
-          <h1 className="font-bold text-lg tracking-tight text-gradient">File Magnet</h1>
+          <h1 className="font-semibold text-lg tracking-tight">File Magnet</h1>
           <Button
             variant="ghost"
             size="icon"
@@ -260,8 +425,8 @@ export function FileManager() {
         {/* Mobile Sidebar Overlay */}
         {isMobile && showSidebar && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 animate-in fade-in duration-300"
-            onClick={() => setShowSidebar(false)}
+            className="fixed inset-0 bg-foreground/25 z-40 animate-in fade-in duration-200"
+            onClick={handleCloseSidebar}
           />
         )}
 
@@ -270,15 +435,15 @@ export function FileManager() {
           <div className={cn(
             "shrink-0 transition-all duration-300 ease-in-out",
             isMobile
-              ? "fixed inset-y-0 left-0 z-50 w-[280px] shadow-2xl glass border-r-0"
-              : "w-[240px] border-r bg-card/30 backdrop-blur-xl"
+              ? "fixed inset-y-0 left-0 z-50 w-[280px] shadow-xl bg-card border-r"
+              : "w-[240px] border-r bg-sidebar"
           )}>
             {isMobile && (
               <div className="absolute top-4 right-4 z-10">
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowSidebar(false)}
+                  onClick={handleCloseSidebar}
                   className="rounded-full hover:bg-destructive/10 hover:text-destructive"
                 >
                   <X className="size-5" />
@@ -300,10 +465,10 @@ export function FileManager() {
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-background/20">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
           {/* Toolbar */}
           {!isMobile && (
-            <div className="glass-card mx-4 mt-4 rounded-2xl shadow-sm border border-border/40">
+            <div className="surface-panel mx-4 mt-4 rounded-xl">
               <Toolbar
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
@@ -316,13 +481,14 @@ export function FileManager() {
                 onDeleteSelected={handleDeleteSelected}
                 selectedCount={selectedFiles.size}
                 showSidebar={showSidebar}
-                onToggleSidebar={() => setShowSidebar(!showSidebar)}
-                              showPreview={showPreview}
-                              onTogglePreview={() => setShowPreview(!showPreview)}
-                              showHidden={showHidden}
-                              onToggleHidden={toggleShowHidden}
-                              searchQuery={searchQuery}
-                              onSearchChange={setSearchQuery}                loading={loading}
+                onToggleSidebar={handleToggleSidebar}
+                showPreview={showPreview}
+                onTogglePreview={handleTogglePreview}
+                showHidden={showHidden}
+                onToggleHidden={toggleShowHidden}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                loading={loading}
                 sortField={sortField}
                 sortOrder={sortOrder}
                 onToggleSort={toggleSort}
@@ -336,11 +502,11 @@ export function FileManager() {
             "flex items-center justify-between mx-4 mt-4 mb-2",
             isMobile ? "px-0" : ""
           )}>
-            <div className="glass-card px-4 py-2 rounded-xl flex-1 mr-4 overflow-hidden border border-border/40">
+            <div className="surface-panel px-4 py-2 rounded-xl flex-1 mr-4 overflow-hidden">
               <Breadcrumb path={currentPath} onNavigate={navigateToFolder} />
             </div>
             {!isMobile && (
-              <div className="glass-card p-1 rounded-xl border border-border/40">
+              <div className="surface-panel p-1 rounded-xl">
                 <ThemeToggle />
               </div>
             )}
@@ -354,7 +520,7 @@ export function FileManager() {
                 size="sm"
                 onClick={goBack}
                 disabled={!canGoBack}
-                className="shrink-0 rounded-full glass"
+                className="shrink-0 rounded-xl bg-card"
               >
                 Back
               </Button>
@@ -362,7 +528,7 @@ export function FileManager() {
                 variant="secondary"
                 size="sm"
                 onClick={() => setShowCreateFolder(true)}
-                className="shrink-0 rounded-full glass"
+                className="shrink-0 rounded-xl bg-card"
               >
                 New Folder
               </Button>
@@ -371,7 +537,7 @@ export function FileManager() {
                 size="sm"
                 onClick={refresh}
                 disabled={loading}
-                className="shrink-0 rounded-full glass"
+                className="shrink-0 rounded-xl bg-card"
               >
                 Refresh
               </Button>
@@ -380,7 +546,7 @@ export function FileManager() {
 
           {/* Content */}
           <div className="flex-1 flex overflow-hidden px-4 pb-4">
-            <div className="glass-card flex-1 flex flex-col min-w-0 overflow-hidden rounded-2xl border border-border/40 shadow-sm relative">
+            <div className="surface-panel flex-1 flex flex-col min-w-0 overflow-hidden rounded-xl relative">
               {/* Drop zone */}
               <div className={cn(
                 "border-b border-border/40",
@@ -419,9 +585,14 @@ export function FileManager() {
               {/* Files content */}
               <div className="flex-1 overflow-auto custom-scrollbar">
                 {loading ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-4">
-                    <div className="size-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                    <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading your files...</p>
+                  <div className="p-4 sm:p-6 space-y-3" aria-label="Loading files">
+                    {Array.from({ length: 8 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-14 rounded-xl bg-muted/60 skeleton-shimmer"
+                        style={{ animationDelay: `${index * 55}ms` }}
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="p-1">
@@ -485,11 +656,11 @@ export function FileManager() {
 
             {/* Preview Panel - Desktop only or mobile overlay */}
             {showPreview && !isMobile && (
-              <div className="w-[300px] shrink-0 ml-4 animate-in slide-in-from-right duration-500 ease-out">
-                <div className="glass-card h-full rounded-2xl border border-border/40 overflow-hidden shadow-sm">
+              <div className="w-[300px] shrink-0 ml-4 animate-in slide-in-from-right duration-300 ease-out">
+                <div className="surface-panel h-full rounded-xl overflow-hidden">
                   <PreviewPanel
                     file={focusedFile}
-                    onClose={() => setShowPreview(false)}
+                    onClose={handleClosePreview}
                     onDownload={downloadFile}
                     onDelete={handleDeleteFile}
                     onMove={setMoveFileTarget}
@@ -503,15 +674,15 @@ export function FileManager() {
             {isMobile && showPreview && focusedFile && (
               <>
                 <div
-                  className="fixed inset-0 bg-black/60 backdrop-blur-md z-40 animate-in fade-in duration-300"
-                  onClick={() => setShowPreview(false)}
+                  className="fixed inset-0 bg-foreground/35 z-40 animate-in fade-in duration-200"
+                  onClick={handleClosePreview}
                 />
                 <div className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] animate-in slide-in-from-bottom duration-500 ease-out overflow-hidden">
                   <div className="bg-background rounded-t-3xl border-t border-border/50 h-full">
                     <div className="w-12 h-1.5 bg-muted rounded-full mx-auto my-3" />
                     <PreviewPanel
                       file={focusedFile}
-                      onClose={() => setShowPreview(false)}
+                      onClose={handleClosePreview}
                       onDownload={downloadFile}
                       onDelete={handleDeleteFile}
                       onMove={setMoveFileTarget}
@@ -530,6 +701,25 @@ export function FileManager() {
         file={previewFile}
         onClose={() => setPreviewFile(null)}
         onDownload={downloadFile}
+      />
+
+      <CommandPalette
+        isOpen={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        actions={commandActions}
+        files={commandFiles}
+        onOpenFile={handleCommandOpenFile}
+        onOpenFolder={handleCommandOpenFolder}
+      />
+
+      <ConfirmDialog
+        isOpen={pendingDelete !== null}
+        title={getDeleteDialogCopy().title}
+        description={getDeleteDialogCopy().description}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDelete(null)}
       />
 
       <CreateFolderDialog

@@ -146,7 +146,7 @@ export function PreviewPanel({
         <div className="size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
           <Eye className="size-8 text-muted-foreground/40" />
         </div>
-        <h3 className="font-medium text-muted-foreground">No Selection</h3>
+        <h3 className="font-medium text-muted-foreground">No selection</h3>
         <p className="text-xs text-muted-foreground/70 mt-1 max-w-[180px]">
           Select a file or folder to see its details
         </p>
@@ -160,13 +160,11 @@ export function PreviewPanel({
   const isAudio = ["mp3", "wav", "ogg", "m4a", "flac", "aac"].includes(ext);
 
   const handleDelete = async () => {
-    if (confirm(`Delete "${file.name}"?`)) {
-      await onDelete(file.path);
-    }
+    await onDelete(file.path);
   };
 
   return (
-    <div className="h-full flex flex-col bg-muted/20 border-l">
+    <div className="h-full flex flex-col bg-card">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-card/50">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -185,13 +183,11 @@ export function PreviewPanel({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Preview thumbnail */}
-        <div className="p-6 flex flex-col items-center border-b bg-gradient-to-b from-muted/30 to-transparent">
+        <div className="p-6 flex flex-col items-center border-b bg-muted/20">
           {isImage && previewUrl ? (
             <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-muted/50 shadow-lg">
               {imageLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                </div>
+                <div className="absolute inset-0 skeleton-shimmer" />
               )}
               <img
                 src={previewUrl}
@@ -206,7 +202,7 @@ export function PreviewPanel({
           ) : (isVideo || isAudio) ? (
             <div
               onClick={() => onPreview(file)}
-              className="w-full aspect-square rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex flex-col items-center justify-center gap-3 cursor-pointer hover:from-primary/30 hover:to-primary/10 transition-colors shadow-lg"
+              className="w-full aspect-square rounded-xl bg-primary/10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-primary/15 transition-colors"
             >
               <div className="size-16 rounded-full bg-primary/20 flex items-center justify-center">
                 <Play className="size-8 text-primary ml-1" />

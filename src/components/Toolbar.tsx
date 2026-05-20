@@ -194,7 +194,7 @@ export function Toolbar({
 
         {/* Sort dropdown menu */}
         {showSortMenu && (
-          <div className="absolute top-full left-0 mt-2 w-48 glass rounded-2xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="absolute top-full left-0 mt-2 w-48 glass rounded-xl py-2 z-50 animate-in fade-in-0 zoom-in-95 duration-150">
             <div className="px-3 py-1 mb-1 border-b border-border/30">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Sort by</span>
             </div>
@@ -281,7 +281,7 @@ export function Toolbar({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Search items..."
-          className="w-48 h-9 pl-10 pr-8 text-xs font-medium bg-muted/40 border border-transparent rounded-xl placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background/80 focus:border-border/50 focus:w-64 transition-all duration-300"
+          className="w-56 h-9 pl-10 pr-8 text-xs font-medium bg-muted/40 border border-transparent rounded-xl placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-background/80 focus:border-border/50 transition-colors duration-200"
         />
         {searchQuery && (
           <button
@@ -360,7 +360,7 @@ function ViewModeButton({
       className={cn(
         "size-7 rounded-lg flex items-center justify-center transition-all duration-300",
         active
-          ? "bg-background shadow-sm text-primary scale-105"
+          ? "bg-background shadow-sm text-primary"
           : "text-muted-foreground/70 hover:text-foreground hover:bg-background/30"
       )}
     >
@@ -368,4 +368,3 @@ function ViewModeButton({
     </button>
   );
 }
-

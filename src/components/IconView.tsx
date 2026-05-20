@@ -67,17 +67,17 @@ export function IconView({
   const closeContextMenu = () => setContextMenu(null);
 
   const handleDelete = async (file: FileInfo) => {
-    if (confirm(`Delete "${file.name}"?`)) {
-      await onDelete(file.path);
-    }
+    await onDelete(file.path);
     closeContextMenu();
   };
 
   if (files.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <Folder className="size-16 text-muted-foreground/30 mb-4" />
-        <h3 className="font-medium text-muted-foreground">No files</h3>
+      <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+        <div className="size-16 rounded-2xl bg-muted/60 flex items-center justify-center mb-4">
+          <Folder className="size-8 text-muted-foreground/60" />
+        </div>
+        <h3 className="font-medium text-foreground">No files</h3>
         <p className="text-sm text-muted-foreground/70 mt-1">
           Drop files here or create a folder
         </p>
@@ -88,10 +88,11 @@ export function IconView({
   return (
     <>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(90px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-1 sm:gap-2 p-3 sm:p-4">
-        {files.map((file) => (
+        {files.map((file, index) => (
           <IconItem
             key={file.path}
             file={file}
+            index={index}
             isSelected={selectedFiles.has(file.path)}
             isFocused={focusedFile?.path === file.path}
             onSelect={onSelect}
@@ -113,7 +114,7 @@ export function IconView({
             onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }}
           />
           <div
-            className="fixed z-50 bg-popover border rounded-xl shadow-xl py-1.5 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
+            className="fixed z-50 surface-panel rounded-xl py-1.5 min-w-[160px] animate-in fade-in zoom-in-95 duration-100"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
             {!contextMenu.file.isDirectory && (
@@ -177,6 +178,7 @@ function ContextMenuItem({
 
 function IconItem({
   file,
+  index,
   isSelected,
   isFocused,
   onSelect,
@@ -187,6 +189,7 @@ function IconItem({
   onDrop,
 }: {
   file: FileInfo;
+  index: number;
   isSelected: boolean;
   isFocused: boolean;
   onSelect: (file: FileInfo) => void;
@@ -278,12 +281,13 @@ function IconItem({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      style={{ animationDelay: `${Math.min(index, 12) * 18}ms` }}
       className={cn(
-        "relative flex flex-col items-center p-3 rounded-2xl cursor-pointer transition-all duration-200 group",
-        isSelected && "bg-primary/10 ring-2 ring-primary/40 shadow-sm",
-        isFocused && !isSelected && "bg-muted/40 ring-1 ring-border/50 shadow-xs",
-        !isSelected && !isFocused && "hover:bg-muted/30 hover:shadow-xs",
-        isDragOver && "bg-primary/20 ring-2 ring-primary scale-105 shadow-md",
+        "file-tile relative flex flex-col items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1",
+        isSelected && "bg-primary/10 ring-1 ring-primary/50",
+        isFocused && !isSelected && "bg-muted/55 ring-1 ring-border/70",
+        !isSelected && !isFocused && "hover:bg-muted/45",
+        isDragOver && "bg-primary/15 ring-2 ring-primary",
         isDragging && "opacity-40 scale-95"
       )}
     >
@@ -304,14 +308,14 @@ function IconItem({
 
       {/* Icon */}
       <div className={cn(
-        "size-16 rounded-2xl flex items-center justify-center mb-3 transition-all duration-300",
-        file.isDirectory ? "bg-amber-500/10 shadow-[0_0_20px_rgba(245,158,11,0.1)]" : "bg-muted/40",
+        "size-16 rounded-xl flex items-center justify-center mb-3 transition-all duration-300",
+        file.isDirectory ? "bg-amber-500/10" : "bg-muted/55",
         isDragOver && "bg-primary/30 animate-pulse",
-        !isDragging && "group-hover:scale-110 group-hover:-translate-y-1"
+        !isDragging && "group-hover:-translate-y-0.5"
       )}>
         {file.isDirectory ? (
           isDragOver ? (
-            <FolderOpen className="size-10 text-primary animate-bounce" />
+            <FolderOpen className="size-10 text-primary" />
           ) : (
             <Folder className="size-10 text-amber-500 fill-amber-500/20" />
           )
@@ -337,7 +341,7 @@ function IconItem({
 
       {/* Drop target indicator */}
       {isDragOver && (
-        <div className="absolute inset-0 border-2 border-dashed border-primary rounded-2xl pointer-events-none animate-pulse" />
+        <div className="absolute inset-0 border-2 border-dashed border-primary rounded-xl pointer-events-none" />
       )}
     </div>
   );

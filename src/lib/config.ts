@@ -1,13 +1,16 @@
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { homedir, userInfo } from "node:os";
 
-const CONFIG_FILE = "config.json";
 const USER_HOME = homedir();
-const DEFAULT_LOCATIONS = [
-  { name: "Project Data", path: "/home/hades/project/filemanager/data" },
-  { name: "Ramadhan 2026", path: "/home/hades/2026-ramadhan" },
-  { name: "Home Storage", path: USER_HOME }
-];
+const CONFIG_FILE = join(USER_HOME, ".filemanager-config.json");
+
+function getDefaultLocations() {
+  return [
+    { name: "Home", path: USER_HOME },
+    { name: "Documents", path: join(USER_HOME, "Documents") },
+    { name: "Downloads", path: join(USER_HOME, "Downloads") },
+  ];
+}
 
 export interface Location {
   name: string;
@@ -19,7 +22,6 @@ export interface Config {
   activeLocationIndex: number;
 }
 
-// In-memory cache
 let configCache: Config | null = null;
 
 export async function loadConfig(): Promise<Config> {
@@ -30,42 +32,27 @@ export async function loadConfig(): Promise<Config> {
     if (await file.exists()) {
       const data = await file.json();
       configCache = {
-        locations: data.locations || DEFAULT_LOCATIONS,
-        activeLocationIndex: data.activeLocationIndex ?? 0
+        locations: data.locations?.length ? data.locations : getDefaultLocations(),
+        activeLocationIndex: data.activeLocationIndex ?? 0,
       };
     } else {
-      configCache = { 
-        locations: DEFAULT_LOCATIONS,
-        activeLocationIndex: 0
-      };
-      await saveConfig(configCache);
+      configCache = { locations: getDefaultLocations(), activeLocationIndex: 0 };
+      await Bun.write(CONFIG_FILE, JSON.stringify(configCache, null, 2));
     }
   } catch (e) {
-    console.error("Failed to load config, using default", e);
-    configCache = { 
-      locations: DEFAULT_LOCATIONS,
-      activeLocationIndex: 0
-    };
+    console.error("Failed to load config, using defaults:", e);
+    configCache = { locations: getDefaultLocations(), activeLocationIndex: 0 };
   }
-  
+
   return configCache;
 }
 
 export async function saveConfig(newConfig: Partial<Config>): Promise<Config> {
-  const current = await loadConfig();
+  const current = configCache ?? await loadConfig();
   const updated = { ...current, ...newConfig };
-  
   await Bun.write(CONFIG_FILE, JSON.stringify(updated, null, 2));
   configCache = updated;
-  
   return updated;
-}
-
-export async function getActiveLocation(): Promise<Location> {
-  const config = await loadConfig();
-  const location = config.locations[config.activeLocationIndex];
-  if (location) return location;
-  return DEFAULT_LOCATIONS[0] as Location;
 }
 
 export function getDataDir(): string {
@@ -73,5 +60,13 @@ export function getDataDir(): string {
     const loc = configCache.locations[configCache.activeLocationIndex];
     if (loc) return loc.path;
   }
-  return (DEFAULT_LOCATIONS[0] as Location).path;
+  return USER_HOME;
+}
+
+export function getCurrentUser(): string {
+  try {
+    return userInfo().username;
+  } catch {
+    return process.env.USER || process.env.LOGNAME || "unknown";
+  }
 }

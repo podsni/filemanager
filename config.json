@@ -1,17 +1,4 @@
 {
-  "locations": [
-    {
-      "name": "Project Data",
-      "path": "/home/hades/project/filemanager/data"
-    },
-    {
-      "name": "Ramadhan 2026",
-      "path": "/home/hades/2026-ramadhan"
-    },
-    {
-      "name": "Home Storage",
-      "path": "/home/hades"
-    }
-  ],
-  "activeLocationIndex": 1
+  "locations": [],
+  "activeLocationIndex": 0
 }

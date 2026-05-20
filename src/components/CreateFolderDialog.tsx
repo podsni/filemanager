@@ -53,18 +53,18 @@ export function CreateFolderDialog({ isOpen, onClose, onCreateFolder }: CreateFo
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 animate-in fade-in-0 duration-150"
       onClick={handleClose}
     >
       <div
-        className="bg-card border rounded-2xl shadow-2xl w-full max-w-md m-4 animate-in zoom-in-95 duration-200"
+        className="surface-panel rounded-2xl shadow-xl w-full max-w-md m-4 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b bg-muted/30 rounded-t-2xl">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg">
-              <FolderPlus className="size-5 text-white" />
+            <div className="size-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
+              <FolderPlus className="size-5 text-amber-600" />
             </div>
             <div>
               <h2 className="font-semibold text-lg">Create Folder</h2>
