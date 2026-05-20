@@ -17,7 +17,7 @@ import { CommandPalette, type CommandPaletteAction, type CommandPaletteFile } fr
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useFiles } from "@/hooks/useFiles";
 import { cn } from "@/lib/utils";
-import { Menu, X, Settings, ArrowUpFromLine } from "lucide-react";
+import { Menu, X, Settings, ArrowUpFromLine, ChevronLeft, FolderPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface FileInfo {
@@ -78,6 +78,7 @@ export function FileManager() {
     locations,
     activeLocationIndex,
     switchLocation,
+    navigateToLocation,
   } = useFiles();
 
   // Responsive breakpoints
@@ -397,69 +398,61 @@ export function FileManager() {
         </div>
       )}
 
-      {/* Mobile Header */}
+      {/* Mobile Header — slim title only */}
       {isMobile && (
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-card/95 z-30">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleToggleSidebar}
-            className="hover:bg-primary/10"
-          >
-            <Menu className="size-5" />
-          </Button>
-          <h1 className="font-semibold text-lg tracking-tight">File Magnet</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowSettings(true)}
-            className="hover:bg-primary/10"
-          >
-            <Settings className="size-5" />
-          </Button>
+        <div className="flex items-center justify-center px-4 py-2.5 border-b bg-card/95 backdrop-blur-sm z-30">
+          <h1 className="font-semibold text-base tracking-tight">File Magnet</h1>
         </div>
       )}
 
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden relative z-10">
         {/* Mobile Sidebar Overlay */}
-        {isMobile && showSidebar && (
+        {isMobile && (
           <div
-            className="fixed inset-0 bg-foreground/25 z-40 animate-in fade-in duration-200"
+            className={cn(
+              "fixed inset-0 bg-foreground/25 z-40 transition-opacity duration-300",
+              showSidebar ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            )}
             onClick={handleCloseSidebar}
           />
         )}
 
-        {/* Sidebar */}
-        {(showSidebar || !isMobile) && showSidebar && (
-          <div className={cn(
-            "shrink-0 transition-all duration-300 ease-in-out",
-            isMobile
-              ? "fixed inset-y-0 left-0 z-50 w-[280px] shadow-xl bg-card border-r"
-              : "w-[240px] border-r bg-sidebar"
-          )}>
-            {isMobile && (
-              <div className="absolute top-4 right-4 z-10">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCloseSidebar}
-                  className="rounded-full hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="size-5" />
-                </Button>
-              </div>
-            )}
+        {/* Desktop Sidebar */}
+        {!isMobile && showSidebar && (
+          <div className="shrink-0 w-[240px] border-r bg-sidebar">
             <Sidebar
               currentPath={currentPath}
-              onNavigate={(path) => {
-                navigateToFolder(path);
-                closeMobileOverlays();
-              }}
+              onNavigate={(path) => { navigateToFolder(path); closeMobileOverlays(); }}
               folders={folders}
               locations={locations}
               activeLocationIndex={activeLocationIndex}
               onSwitchLocation={switchLocation}
+              onNavigateToLocation={(index, subPath) => { navigateToLocation(index, subPath); closeMobileOverlays(); }}
+            />
+          </div>
+        )}
+
+        {/* Mobile Sidebar — always mounted, slide via transform */}
+        {isMobile && (
+          <div className={cn(
+            "fixed inset-y-0 left-0 z-50 w-[280px] shadow-xl bg-card border-r",
+            "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            showSidebar ? "translate-x-0" : "-translate-x-full"
+          )}>
+            <div className="absolute top-4 right-4 z-10">
+              <Button variant="ghost" size="icon" onClick={handleCloseSidebar} className="rounded-full">
+                <X className="size-5" />
+              </Button>
+            </div>
+            <Sidebar
+              currentPath={currentPath}
+              onNavigate={(path) => { navigateToFolder(path); closeMobileOverlays(); }}
+              folders={folders}
+              locations={locations}
+              activeLocationIndex={activeLocationIndex}
+              onSwitchLocation={switchLocation}
+              onNavigateToLocation={(index, subPath) => { navigateToLocation(index, subPath); closeMobileOverlays(); }}
             />
           </div>
         )}
@@ -512,40 +505,10 @@ export function FileManager() {
             )}
           </div>
 
-          {/* Mobile Actions Bar */}
-          {isMobile && (
-            <div className="flex items-center gap-2 px-4 py-2 mb-2 overflow-x-auto no-scrollbar">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={goBack}
-                disabled={!canGoBack}
-                className="shrink-0 rounded-xl bg-card"
-              >
-                Back
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowCreateFolder(true)}
-                className="shrink-0 rounded-xl bg-card"
-              >
-                New Folder
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={refresh}
-                disabled={loading}
-                className="shrink-0 rounded-xl bg-card"
-              >
-                Refresh
-              </Button>
-            </div>
-          )}
+          {/* Mobile Actions Bar — replaced by bottom bar below */}
 
           {/* Content */}
-          <div className="flex-1 flex overflow-hidden px-4 pb-4">
+          <div className={cn("flex-1 flex overflow-hidden px-4", isMobile ? "pb-24" : "pb-4")}>
             <div className="surface-panel flex-1 flex flex-col min-w-0 overflow-hidden rounded-xl relative">
               {/* Drop zone */}
               <div className={cn(
@@ -741,6 +704,51 @@ export function FileManager() {
         onClose={() => setShowSettings(false)}
         onConfigChanged={refresh}
       />
+
+      {/* Mobile Bottom Action Bar */}
+      {isMobile && (
+        <div className="fixed bottom-0 inset-x-0 z-30 bg-card/95 backdrop-blur-md border-t border-border/50">
+          <div className="flex items-center justify-around px-1 py-1 pb-safe">
+            <button
+              onClick={goBack}
+              disabled={!canGoBack}
+              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl disabled:opacity-30 min-w-[56px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="size-5" />
+              <span className="text-[10px] font-medium">Back</span>
+            </button>
+            <button
+              onClick={() => setShowCreateFolder(true)}
+              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl min-w-[56px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <FolderPlus className="size-5" />
+              <span className="text-[10px] font-medium">New</span>
+            </button>
+            <button
+              onClick={() => void refresh()}
+              disabled={loading}
+              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl min-w-[56px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={cn("size-5", loading && "animate-spin")} />
+              <span className="text-[10px] font-medium">Refresh</span>
+            </button>
+            <button
+              onClick={handleToggleSidebar}
+              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl min-w-[56px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Menu className="size-5" />
+              <span className="text-[10px] font-medium">Locations</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl min-w-[56px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Settings className="size-5" />
+              <span className="text-[10px] font-medium">Settings</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

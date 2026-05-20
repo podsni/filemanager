@@ -7,8 +7,6 @@ const CONFIG_FILE = join(USER_HOME, ".filemanager-config.json");
 function getDefaultLocations() {
   return [
     { name: "Home", path: USER_HOME },
-    { name: "Documents", path: join(USER_HOME, "Documents") },
-    { name: "Downloads", path: join(USER_HOME, "Downloads") },
   ];
 }
 

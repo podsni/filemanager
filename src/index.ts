@@ -31,6 +31,19 @@ const server = serve({
       }
     },
 
+    "/api/check-dirs": {
+      async POST(req) {
+        const { paths } = await req.json() as { paths: string[] };
+        const { stat } = await import("node:fs/promises");
+        const results: Record<string, boolean> = {};
+        await Promise.all(paths.map(async (p) => {
+          try { const s = await stat(p); results[p] = s.isDirectory(); }
+          catch { results[p] = false; }
+        }));
+        return Response.json(results);
+      }
+    },
+
     "/api/config": {
       async GET() {
         const config = await loadConfig();

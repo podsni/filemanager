@@ -120,8 +120,9 @@
   }
   body {
     @apply bg-background text-foreground antialiased selection:bg-primary/10 selection:text-primary;
-    font-family: "Geist", "Satoshi", "Segoe UI", system-ui, sans-serif;
+    font-family: "Geist", "Geist Sans", system-ui, sans-serif;
     font-variant-numeric: tabular-nums;
+    min-height: 100dvh;
   }
 }
 
@@ -197,6 +198,15 @@
   @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
+  }
+
+  @keyframes file-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .file-enter {
+    animation: file-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   @keyframes skeleton-shimmer {

@@ -219,9 +219,9 @@ function FileItem({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ animationDelay: `${Math.min(index, 10) * 18}ms` }}
+      style={{ animationDelay: `${Math.min(index * 35, 350)}ms` }}
       className={cn(
-        "file-row group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-1",
+        "file-enter file-row group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200",
         isSelected
           ? "bg-primary/10 border-primary/50"
           : "bg-card/80 hover:bg-muted/50 border-transparent hover:border-border",

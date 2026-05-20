@@ -281,9 +281,9 @@ function IconItem({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ animationDelay: `${Math.min(index, 12) * 18}ms` }}
+      style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
       className={cn(
-        "file-tile relative flex flex-col items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group animate-in fade-in-0 slide-in-from-bottom-1",
+        "file-enter file-tile relative flex flex-col items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group",
         isSelected && "bg-primary/10 ring-1 ring-primary/50",
         isFocused && !isSelected && "bg-muted/55 ring-1 ring-border/70",
         !isSelected && !isFocused && "hover:bg-muted/45",

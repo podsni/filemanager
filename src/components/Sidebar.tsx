@@ -21,6 +21,7 @@ interface SidebarProps {
   locations?: { name: string; path: string }[];
   activeLocationIndex?: number;
   onSwitchLocation?: (index: number) => void;
+  onNavigateToLocation?: (index: number, subPath: string) => void;
 }
 
 interface SectionProps {
@@ -92,7 +93,8 @@ export function Sidebar({
   folders,
   locations = [],
   activeLocationIndex = 0,
-  onSwitchLocation
+  onSwitchLocation,
+  onNavigateToLocation,
 }: SidebarProps) {
   const [disk, setDisk] = useState<{ total: number; used: number; free: number; percent: number } | null>(null);
 
@@ -103,14 +105,56 @@ export function Sidebar({
       .catch(() => {});
   }, [activeLocationIndex]);
 
-  const favorites = [
-    { icon: <Home className="size-4.5" />, label: "Home", path: "" },
-    { icon: <FileText className="size-4.5" />, label: "Documents", path: "Documents" },
-    { icon: <Download className="size-4.5" />, label: "Downloads", path: "Downloads" },
-    { icon: <Image className="size-4.5" />, label: "Pictures", path: "Pictures" },
-    { icon: <Music className="size-4.5" />, label: "Music", path: "Music" },
-    { icon: <Video className="size-4.5" />, label: "Videos", path: "Videos" },
+  // Find the "home" location index — prefer one named "Home" or the first location
+  const homeLocationIndex = locations.findIndex(l =>
+    l.name.toLowerCase() === "home" || l.path.match(/^\/home\/[^/]+$/) || l.path === "/root"
+  );
+  const effectiveHomeIndex = homeLocationIndex >= 0 ? homeLocationIndex : 0;
+  const homePath = locations[effectiveHomeIndex]?.path ?? "";
+
+  // Quick Access candidates — check which actually exist
+  const quickAccessCandidates = [
+    { icon: <Home className="size-4.5" />, label: "Home", subPath: "", absPath: homePath },
+    { icon: <FileText className="size-4.5" />, label: "Documents", subPath: "Documents", absPath: homePath ? `${homePath}/Documents` : "" },
+    { icon: <Download className="size-4.5" />, label: "Downloads", subPath: "Downloads", absPath: homePath ? `${homePath}/Downloads` : "" },
+    { icon: <Image className="size-4.5" />, label: "Pictures", subPath: "Pictures", absPath: homePath ? `${homePath}/Pictures` : "" },
+    { icon: <Music className="size-4.5" />, label: "Music", subPath: "Music", absPath: homePath ? `${homePath}/Music` : "" },
+    { icon: <Video className="size-4.5" />, label: "Videos", subPath: "Videos", absPath: homePath ? `${homePath}/Videos` : "" },
   ];
+
+  const [existingQuickAccess, setExistingQuickAccess] = useState(quickAccessCandidates.slice(0, 1));
+
+  useEffect(() => {
+    if (!homePath) return;
+    const paths = quickAccessCandidates.filter(c => c.absPath).map(c => c.absPath);
+    fetch("/api/check-dirs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paths }),
+    })
+      .then(r => r.json())
+      .then((result: Record<string, boolean>) => {
+        setExistingQuickAccess(
+          quickAccessCandidates.filter(c => c.subPath === "" || result[c.absPath])
+        );
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homePath]);
+
+  const handleQuickAccess = (subPath: string) => {
+    if (subPath === "") {
+      if (onNavigateToLocation) {
+        onNavigateToLocation(effectiveHomeIndex, "");
+      } else {
+        onNavigate("");
+      }
+    } else if (onNavigateToLocation) {
+      onNavigateToLocation(effectiveHomeIndex, subPath);
+    } else {
+      onNavigate(subPath);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-transparent">
@@ -147,16 +191,20 @@ export function Sidebar({
           </div>
         </Section>
 
-        {/* Favorites */}
+        {/* Quick Access — only shows folders that exist */}
         <Section title="Quick Access" defaultOpen={true}>
           <div className="space-y-0.5">
-            {favorites.map((item) => (
+            {existingQuickAccess.map((item) => (
               <SidebarItem
                 key={item.label}
                 icon={item.icon}
                 label={item.label}
-                isActive={currentPath === item.path}
-                onClick={() => onNavigate(item.path)}
+                isActive={
+                  item.subPath === ""
+                    ? currentPath === "" && activeLocationIndex === effectiveHomeIndex
+                    : currentPath === item.subPath && activeLocationIndex === effectiveHomeIndex
+                }
+                onClick={() => handleQuickAccess(item.subPath)}
                 color="text-primary/70"
               />
             ))}

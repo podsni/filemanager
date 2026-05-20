@@ -54,6 +54,7 @@ interface UseFilesReturn {
   goBack: () => void;
   goForward: () => void;
   switchLocation: (index: number) => Promise<void>;
+  navigateToLocation: (index: number, subPath?: string) => Promise<void>;
 }
 
 export function useFiles(): UseFilesReturn {
@@ -110,10 +111,33 @@ export function useFiles(): UseFilesReturn {
         setCurrentPath("");
         setHistory([""]);
         setHistoryIndex(0);
-        // refresh will be triggered by useEffect [currentPath] or [activeLocationIndex]
       }
     } catch (err) {
       setError("Failed to switch location");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const navigateToLocation = useCallback(async (index: number, subPath = "") => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activeLocationIndex: index }),
+      });
+      if (response.ok) {
+        const config = await response.json();
+        setActiveLocationIndex(config.activeLocationIndex);
+        setCurrentPath(subPath);
+        setHistory([subPath]);
+        setHistoryIndex(0);
+        setSearchQuery("");
+        setFilterType("");
+      }
+    } catch {
+      setError("Failed to navigate");
     } finally {
       setLoading(false);
     }
@@ -353,5 +377,6 @@ export function useFiles(): UseFilesReturn {
     goBack,
     goForward,
     switchLocation,
+    navigateToLocation,
   };
 }
